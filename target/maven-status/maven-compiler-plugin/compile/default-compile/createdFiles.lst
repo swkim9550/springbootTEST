@@ -1,4 +1,6 @@
+com\seongwoo\controller\SampleDomain.class
+com\seongwoo\SpringBootTestApp.class
+com\seongwoo\controller\SampleController.class
 com\seongwoo\controller\SampleService.class
-com\seongwoo\Application.class
-com\seongwoo\RedisConfigRunner.class
-com\seongwoo\controller\RootController.class
+com\seongwoo\scrap\ScrapScheduler.class
+com\seongwoo\config\SchdulerConfig.class

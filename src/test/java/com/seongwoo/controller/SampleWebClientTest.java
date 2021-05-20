@@ -9,6 +9,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.mockito.Mockito.when;
 
 /**
@@ -29,6 +32,9 @@ public class SampleWebClientTest {
 
     @Test
     public void hello() throws Exception{
+
+
+        Map<String,String> test = new HashMap<>();
 
         when(mockSampleService.getName()).thenReturn("whiteship");
         webTestClient.get().uri("/hello")
