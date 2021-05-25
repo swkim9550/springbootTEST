@@ -1,5 +1,5 @@
 com\seongwoo\controller\SampleWebClientTest.class
-com\seongwoo\controller\SampleControllerTestRandom.class
+com\seongwoo\controller\KakaoLoginControllerTest.class
 com\seongwoo\controller\SampleJsonTest.class
-com\seongwoo\controller\SampleControllerTest.class
+com\seongwoo\controller\KakaoLoginControllerTestRandom.class
 com\seongwoo\controller\SampleOneTest.class

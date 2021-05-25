@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(SampleController.class)
+@WebMvcTest(KakaoLoginController.class)
 public class SampleOneTest {
 
     @MockBean

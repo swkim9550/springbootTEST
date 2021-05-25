@@ -1,20 +1,32 @@
 package com.seongwoo.kakao;
 
-import com.seongwoo.dao.KakaoRequest;
+import com.seongwoo.dao.StussyItem;
+import com.seongwoo.scrap.ScrapScheduler;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Collections;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+
 
 @Slf4j
 @Service
 public class KakaoAPI {
+    @Autowired
+    KakaoConst kakaoConst;
+
+    @Autowired
+    ScrapScheduler scrapScheduler;
 
     private final RestTemplate restTemplate;
 
@@ -22,62 +34,80 @@ public class KakaoAPI {
         this.restTemplate = restTemplateBuilder.build();
     }
 
-    public Object callAPI(){
+    public String callDefaultTemplateAPI(String ACCESS_TOKEN){
 
         try{
-            String apiURL = "https://kapi.kakao.com/v2/api/talk/memo/default/send";
-            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(apiURL);
-
-            String token = getToken();
-
+            String apiURL = kakaoConst.getMESSAGE_SEND_URI();
             HttpHeaders httpHeaders = new HttpHeaders();
-            httpHeaders.set("Authorization","Bearer 928b30b6daa4adbe5f292b7d94e641e2");
-            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<?> httpEntity = new HttpEntity<>(httpHeaders);
-            Object asad = restTemplate.exchange(builder.toUriString(), HttpMethod.POST, httpEntity, KakaoRequest.class).getBody();
-            KakaoRequest responseEntity = restTemplate.exchange(builder.toUriString(), HttpMethod.POST, httpEntity, KakaoRequest.class).getBody();
+            httpHeaders.set("Authorization","Bearer "+ACCESS_TOKEN);
+            httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, JSONObject> param = new LinkedMultiValueMap<>();
+            JSONObject template_object = new JSONObject();
+            template_object.put("object_type","feed");
+
+            JSONObject contentObject = new JSONObject();
+            StussyItem stussyItem = new StussyItem();
+
+            boolean dbCheck = scrapScheduler.selectDB(stussyItem);
+
+            contentObject.put("title","신상품 "+stussyItem.getProductName());
+            contentObject.put("description",stussyItem.getPrice());
+            contentObject.put("image_url",stussyItem.getImgUrl());
+            contentObject.put("image_width","240");
+            contentObject.put("image_height","240");
+
+            JSONObject linkObject = new JSONObject();
+            linkObject.put("web_url","https://www.stussy.co.kr/collections/tees");
+            linkObject.put("mobile_web_url","https://developers.kakao.com");
+            contentObject.put("link",linkObject);
+            template_object.put("content",contentObject);
+
+            JSONArray buttonArray = new JSONArray();
+            JSONObject buttonObject = new JSONObject();
+            buttonObject.put("title","웹으로 이동");
+
+            JSONObject buttonLinkObject = new JSONObject();
+            buttonLinkObject.put("web_url","https://www.stussy.co.kr/collections/tees");
+            buttonObject.put("link",buttonLinkObject);
+
+            buttonArray.put(buttonObject);
+            template_object.put("buttons",buttonArray);
+            param.add("template_object",template_object);
+
+            HttpEntity<?> httpEntity = new HttpEntity<>(param,httpHeaders);
+            restTemplate.postForEntity(apiURL, httpEntity, Object.class);
+
         }catch (Exception e){
             log.error("error is {}",e.toString());
         }
-
         return "";
     }
 
-    private String getToken() {
+    public String callTemplateAPI(String ACCESS_TOKEN){
+        return null;
+    }
+
+    public String getFinalURL(String url) throws IOException {
+        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+        con.setInstanceFollowRedirects(false);
+        con.connect();
+        con.getInputStream();
+
+        if (con.getResponseCode() == HttpURLConnection.HTTP_MOVED_PERM || con.getResponseCode() == HttpURLConnection.HTTP_MOVED_TEMP) {
+            String redirectUrl = con.getHeaderField("Location");
+            return getFinalURL(redirectUrl);
+        }
+        return url;
+    }
+
+    public void getToken() {
         try{
-            String apiURL = "https://kauth.kakao.com/oauth/authorize?client_id=928b30b6daa4adbe5f292b7d94e641e2&redirect_uri=http://localhost:8080/hello&response_type=code";
-            String tokenURL = "https://kauth.kakao.com/oauth/token";
-            //ResponseEntity<String> responseEntity = restTemplate.getForEntity(apiURL , String.class, 25);
-            //ResponseEntity<KakaoResponse> responseEntity1351 = restTemplate.getForEntity(apiURL , KakaoResponse.class);
-
-            KakaoRequest request = new KakaoRequest();
-            request.setGrant_type("authorization_code");
-            request.setClient_id("928b30b6daa4adbe5f292b7d94e641e2");
-            request.setRedirect_uri("http://localhost:8080/hello");
-            request.setCode("oJat_xMCzUGTVuZD32QMsRgQCjn-uzZpqFiasHwdK-ReT4ye1UK5KAFZ_En6wZ7hnmXs9wopcFAAAAF5iteRKw");
-
-            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.set("grant_type","authorization_code");
-            params.set("client_id","928b30b6daa4adbe5f292b7d94e641e2");
-            params.set("redirect_uri","http://localhost:8080/hello");
-            params.set("code","xjjWp9vtgmG6BTDzh2QghpBGaHtXRKZjlxHmJTmwqxSCCbsltBdtSaTRfLN0VmBQYi2wEgorDR4AAAF5ir8NRw");
-            params.set("client_secret","oJat_xMCzUGTVuZD32QMsRgQCjn-uzZpqFiasHwdK-ReT4ye1UK5KAFZ_En6wZ7hnmXs9wopcFAAAAF5iteRKw");
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-            HttpEntity formEntity = new HttpEntity<>(params, headers);
-
-            ResponseEntity<String> responseEntity2 = restTemplate.postForEntity(tokenURL + "", formEntity, String.class);
-
-//        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(apiURL);
-//        HttpHeaders httpHeaders = new HttpHeaders();
-//        HttpEntity<?> httpEntity = new HttpEntity<>(httpHeaders);
-//        Object asad = restTemplate.exchange(apiURL,httpEntity,);
+            String apiURL = kakaoConst.getAUTHORIZATION_CODE_API_URI();
+            URI uri = new URI(apiURL);
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri , String.class);
         }catch (Exception e){
             log.error(e.toString());
         }
-
-        return "";
     }
 }

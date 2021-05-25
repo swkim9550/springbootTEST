@@ -24,6 +24,8 @@ public class ScrapScheduler {
     @Autowired
     KakaoAPI kakaoAPI;
 
+    @Autowired
+    QueryString queryString;
 
     @PostConstruct
     public void initDB(){
@@ -31,10 +33,10 @@ public class ScrapScheduler {
             log.info("Create Table & Insert");
             Connection connection = dataSource.getConnection();
             Statement statement = connection.createStatement();
-            String initCreateQuery = "CREATE TABLE STUSSY(ID INTEGER NOT NULL, PRODUCT_NAME VARCHAR(255), PRICE VARCHAR(255), IMAGE_URL VARCHAR(255),SOLD_OUT VARCHAR(255), PRIMARY KEY (ID) )";
+            String initCreateQuery = queryString.getCREATE_QUERY();
             statement.executeUpdate(initCreateQuery);
 
-            String initInsertQuery = "INSERT INTO STUSSY VALUES(1, 'test','test','test','test')";
+            String initInsertQuery = queryString.getINIT_INSERT_QUERY();
             statement.execute(initInsertQuery);
             log.info("insert init Data finish.");
         }catch (Exception e){
@@ -42,20 +44,18 @@ public class ScrapScheduler {
         }
     }
 
-
     @Scheduled(fixedDelay = 180000)
     //@Scheduled(cron = "30 * * * * *")
     //@Async
     public void cronStussy(){
         try{
-            kakaoAPI.callAPI();
+            //sendMessage();
+            String url = "https://www.stussy.co.kr/collections/tees";
+            StussyItem stussyItem = getDocument(url);
 
-//            String url = "https://www.stussy.co.kr/collections/new-arrivals";
-//            StussyItem stussyItem = getDocument(url);
-//
-//            if(stussyItem.isNewAlive()){
-//                sendMessage();
-//            }
+            if(stussyItem.isNewAlive()){
+                //sendMessage();
+            }
         }
         catch (Exception e){
             log.error(e.toString());
@@ -63,6 +63,8 @@ public class ScrapScheduler {
     }
 
     private void sendMessage() {
+        kakaoAPI.getToken();
+        //kakaoAPI.callAPI();
     }
 
     private StussyItem getDocument(String url) {
@@ -113,12 +115,30 @@ public class ScrapScheduler {
         return stussyItem;
     }
 
-    private Boolean checkDB(StussyItem stussyItem) {
+    public Boolean selectDB(StussyItem stussyItem){
         try{
-            Connection connection = dataSource.getConnection();
+            Connection connection = getDBConnection();
             Statement statement = connection.createStatement();
-            String selectQuery = "SELECT * FROM " +
-                                    "STUSSY";
+            String selectQuery = queryString.getSELECT_QUERY();;
+            ResultSet rs = statement.executeQuery(selectQuery);
+
+            while (rs.next()){
+                stussyItem.setProductName(rs.getString("PRODUCT_NAME"));
+                stussyItem.setImgUrl("https:"+rs.getString("IMAGE_URL"));
+                stussyItem.setPrice(rs.getString("PRICE"));
+                stussyItem.setSoldOutString(rs.getString("SOLD_OUT"));
+            }
+        }catch (Exception e){
+            log.error(e.toString());
+        }
+        return true;
+    }
+
+    public Boolean checkDB(StussyItem stussyItem) {
+        try{
+            Connection connection = getDBConnection();
+            Statement statement = connection.createStatement();
+            String selectQuery = queryString.getSELECT_QUERY();;
             ResultSet rs = statement.executeQuery(selectQuery);
 
             while (rs.next()){
@@ -143,11 +163,11 @@ public class ScrapScheduler {
         return true;
     }
 
-    private void updateDB(StussyItem stussyItem) {
+    public void updateDB(StussyItem stussyItem) {
         try{
             //ID,PRODUCT_NAME VARCHAR(255), PRICE VARCHAR(255), IMAGE_URL VARCHAR(255),SOLD_OUT VARCHAR(255)
             Connection connection = dataSource.getConnection();
-            String updateQuery = "UPDATE STUSSY SET PRODUCT_NAME=?, PRICE=? ,IMAGE_URL=?,SOLD_OUT=? WHERE ID= ?";
+            String updateQuery = queryString.getUPDATE_QUERY();
             PreparedStatement pstmt = connection.prepareStatement(updateQuery);
             pstmt.setString(1,stussyItem.getProductName());
             pstmt.setString(2,stussyItem.getPrice());
@@ -158,9 +178,19 @@ public class ScrapScheduler {
             int insertTrue = pstmt.executeUpdate();
             log.info("change list=",insertTrue);
 
-
         }catch (SQLException e){
             log.error("SQL Error {}",e.toString());
         }
     }
+
+    public Connection getDBConnection(){
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+        }catch (Exception e){
+            log.error("getDBConnection() error. {}",e.toString());
+        }
+        return connection;
+    }
+
 }
